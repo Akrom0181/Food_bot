@@ -699,11 +699,13 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	_ "github.com/lib/pq"
+	"github.com/spf13/cast"
 )
 
 // Data structures
@@ -737,33 +739,37 @@ var (
 	bot *tgbotapi.BotAPI
 )
 
+type Config struct {
+	PostgresHost     string
+	PostgresPort     int
+	PostgresUser     string
+	PostgresPassword string
+	PostgresDatabase string
+}
+
+func getOrReturnDefaultValue(key string, defaultValue interface{}) interface{} {
+	val, exists := os.LookupEnv(key)
+
+	if exists {
+		return val
+	}
+
+	return defaultValue
+}
+
 // Database functions
-func initDB() {
-	var err error
+func initDB() Config {
+	config := Config{}
 	// Fetch database credentials from environment variables
-	dbUser := "shahzod"
-	dbName := "food_gehc"
-	dbPassword := "YuZERp29JK67MAtUJFN83h1e2FLe7TpE"
-	dbSSLMode := "dpg-crg01paj1k6c7399vc90-a.ohio-postgres.render.com"
-
-	if dbUser == "" || dbName == "" || dbPassword == "" || dbSSLMode == "" {
-		log.Fatal("Database environment variables (DB_USER, DB_NAME, DB_PASSWORD, DB_SSLMODE) are not set")
-	}
-
-	connStr := fmt.Sprintf("user=%s dbname=%s sslmode=%s password=%s",
-		dbUser, dbName, dbSSLMode, dbPassword)
-	db, err = sql.Open("postgres", connStr)
-	if err != nil {
-		log.Fatalf("Failed to open database: %v", err)
-	}
-
-	err = db.Ping()
-	if err != nil {
-		log.Fatalf("Failed to ping database: %v", err)
-	}
+	config.PostgresHost = cast.ToString(getOrReturnDefaultValue("POSTGRES_HOST", "dpg-crg01paj1k6c7399vc90-a.ohio-postgres.render.com"))
+	config.PostgresPort = cast.ToInt(getOrReturnDefaultValue("POSTGRES_PORT", 5432))
+	config.PostgresUser = cast.ToString(getOrReturnDefaultValue("POSTGRES_USER", "shahzod"))
+	config.PostgresPassword = cast.ToString(getOrReturnDefaultValue("POSTGRES_PASSWORD", "YuZERp29JK67MAtUJFN83h1e2FLe7TpE"))
+	config.PostgresDatabase = cast.ToString(getOrReturnDefaultValue("POSTGRES_DATABASE", "food_gehc"))
 
 	createTables()
 	insertInitialData()
+	return config
 }
 
 func createTables() {
